@@ -1,0 +1,33 @@
+name: expire
+on:
+  schedule:
+    - cron: '0 15 * * *'   # 매일 00:00 KST — EXPIRES 다음 날 자료 삭제
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '즉시 파기하려면 true'
+        default: 'false'
+permissions:
+  contents: write
+jobs:
+  expire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: chk
+        run: |
+          EXP=$(cat EXPIRES); TODAY=$(TZ=Asia/Seoul date +%F)
+          echo "expires=$EXP today=$TODAY"
+          if [ "${{ github.event.inputs.force }}" = "true" ] || [ "$TODAY" \> "$EXP" ]; then echo "expired=true" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.chk.outputs.expired == 'true'
+        run: |
+          if [ -d r ]; then
+            git rm -rq r
+            cp expired.html index.html
+            git config user.name github-actions
+            git config user.email actions@users.noreply.github.com
+            git commit -am "expired: report removed $(TZ=Asia/Seoul date '+%F %R')"
+            git push
+          else
+            echo "already removed"
+          fi
